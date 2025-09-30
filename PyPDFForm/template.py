@@ -225,7 +225,7 @@ def get_dropdown_choices(widget: dict) -> Union[Tuple[str, ...], None]:
         Union[Tuple[str, ...], None]: A tuple of strings representing the choices in the dropdown, or None if the choices are not specified.
     """
     return tuple(
-        (each if isinstance(each, str) else str(each[1]))
+        (each if isinstance(each, str) else (str(each[1]) if len(each) > 1 else (str(each[0]) if len(each) > 0 else "")))
         for each in extract_widget_property(
             widget, DROPDOWN_CHOICE_PATTERNS, None, None
         )

@@ -102,10 +102,31 @@ def get_draw_image_resolutions(
         Tuple[float, float, float, float]: A tuple containing the x, y coordinates,
             width, and height of the image to be drawn on the PDF page.
     """
-    x = float(widget[Rect][0])
-    y = float(widget[Rect][1])
-    width = abs(float(widget[Rect][0]) - float(widget[Rect][2]))
-    height = abs(float(widget[Rect][1]) - float(widget[Rect][3]))
+    from warnings import warn
+
+    # Check if Rect exists and has proper structure
+    if Rect not in widget:
+        warn("Widget missing '/Rect' entry - using default dimensions (0, 0, 100, 100)", UserWarning)
+        rect = [0, 0, 100, 100]
+    else:
+        rect = widget[Rect]
+
+    # Validate Rect has 4 coordinates
+    if not isinstance(rect, (list, tuple)) or len(rect) < 4:
+        warn(
+            f"Widget '/Rect' entry malformed (expected 4 coordinates, got {len(rect) if hasattr(rect, '__len__') else 'unknown'}) - using defaults",
+            UserWarning
+        )
+        rect = [0, 0, 100, 100]
+
+    try:
+        x = float(rect[0])
+        y = float(rect[1])
+        width = abs(float(rect[0]) - float(rect[2]))
+        height = abs(float(rect[1]) - float(rect[3]))
+    except (ValueError, TypeError) as e:
+        warn(f"Widget '/Rect' coordinates are not numeric - using defaults: {e}", UserWarning)
+        return 0.0, 0.0, 100.0, 100.0
 
     if preserve_aspect_ratio:
         ratio = max(image_width / width, image_height / height)

@@ -77,8 +77,11 @@ def enable_adobe_mode(pdf: bytes) -> bytes:
     reader = PdfReader(stream_to_io(pdf))
     writer = PdfWriter()
 
-    if AcroForm in reader.trailer[Root] and XFA in reader.trailer[Root][AcroForm]:
-        del reader.trailer[Root][AcroForm][XFA]
+    # Check if Root exists in trailer before accessing
+    if Root in reader.trailer:
+        root = reader.trailer[Root]
+        if AcroForm in root and XFA in root[AcroForm]:
+            del root[AcroForm][XFA]
 
     writer.append(reader)
     writer.set_need_appearances_writer()

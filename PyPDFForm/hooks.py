@@ -95,9 +95,9 @@ def update_text_field_font(annot: DictionaryObject, val: str) -> None:
     if not val.startswith("/"):
         return
     if Parent in annot and DA not in annot:
-        text_appearance = annot[Parent][DA]
+        text_appearance = annot.get(Parent, {}).get(DA, "/Helv 0 Tf 0 g")
     else:
-        text_appearance = annot[DA]
+        text_appearance = annot.get(DA, "/Helv 0 Tf 0 g")
 
     text_appearance = text_appearance.split(" ")
 
@@ -130,9 +130,9 @@ def update_text_field_font_size(annot: DictionaryObject, val: float) -> None:
         val (float): The new font size to use for the text field.
     """
     if Parent in annot and DA not in annot:
-        text_appearance = annot[Parent][DA]
+        text_appearance = annot.get(Parent, {}).get(DA, "/Helv 0 Tf 0 g")
     else:
-        text_appearance = annot[DA]
+        text_appearance = annot.get(DA, "/Helv 0 Tf 0 g")
 
     text_appearance = text_appearance.split(" ")
     font_size_index = 0
@@ -164,9 +164,9 @@ def update_text_field_font_color(annot: DictionaryObject, val: tuple) -> None:
         val (tuple): The new font color as an RGB tuple (e.g., (1, 0, 0) for red).
     """
     if Parent in annot and DA not in annot:
-        text_appearance = annot[Parent][DA]
+        text_appearance = annot.get(Parent, {}).get(DA, "/Helv 0 Tf 0 g")
     else:
-        text_appearance = annot[DA]
+        text_appearance = annot.get(DA, "/Helv 0 Tf 0 g")
 
     text_appearance = text_appearance.split(" ")
     font_size_identifier_index = 0
@@ -220,17 +220,13 @@ def update_text_field_multiline(annot: DictionaryObject, val: bool) -> None:
         # may need to change everywhere how feature flags precedence work
         # https://github.com/chinapandaman/PyPDFForm/issues/1162#issuecomment-3326233842
         if Parent in annot and Ff in annot[Parent]:
-            annot[NameObject(Parent)][NameObject(Ff)] = NumberObject(
-                int(
-                    annot[NameObject(Parent)][NameObject(Ff)]
-                    if Ff in annot[NameObject(Parent)]
-                    else 0
-                )
-                | MULTILINE
+            parent_obj = annot[NameObject(Parent)]
+            parent_obj[NameObject(Ff)] = NumberObject(
+                int(parent_obj.get(NameObject(Ff), 0)) | MULTILINE
             )
         else:
             annot[NameObject(Ff)] = NumberObject(
-                int(annot[NameObject(Ff)] if Ff in annot else 0) | MULTILINE
+                int(annot.get(NameObject(Ff), 0)) | MULTILINE
             )
 
 
@@ -288,7 +284,9 @@ def update_check_radio_size(annot: DictionaryObject, val: float) -> None:
             radio button.
         val (float): The new size (width and height) for the check box or radio button.
     """
-    rect = annot[Rect]
+    rect = annot.get(Rect)
+    if not rect:
+        return  # Cannot resize without a Rect
     # scale from bottom left
     new_rect = [
         rect[0],

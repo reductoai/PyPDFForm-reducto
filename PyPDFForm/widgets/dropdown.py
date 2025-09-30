@@ -93,4 +93,8 @@ class DropdownWidget(TextWidget):
         ]
         super().__init__(name, page_number, x, y, **kwargs)
         self.acro_form_params["wkind"] = "choice"
-        self.acro_form_params["value"] = self.acro_form_params["options"][0]
+        # Check if options exist and has at least one element
+        if "options" in self.acro_form_params and self.acro_form_params["options"]:
+            self.acro_form_params["value"] = self.acro_form_params["options"][0]
+        else:
+            self.acro_form_params["value"] = ""

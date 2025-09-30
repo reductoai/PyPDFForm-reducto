@@ -85,16 +85,49 @@ def get_additional_font_params(pdf: bytes, base_font_name: str) -> tuple:
             - font_dict_params (dict): A dictionary of font dictionary parameters.
             Returns empty dictionaries if the font is not found.
     """
+    from warnings import warn
+
     font_descriptor_params = {}
     font_dict_params = {}
-    reader = PdfReader(stream_to_io(pdf))
+
+    try:
+        reader = PdfReader(stream_to_io(pdf))
+    except Exception as e:
+        warn(f"Failed to read PDF for font parameters: {e}", UserWarning)
+        return font_descriptor_params, font_dict_params
+
+    if not reader.pages:
+        warn("PDF has no pages - cannot extract font parameters", UserWarning)
+        return font_descriptor_params, font_dict_params
+
     first_page = reader.get_page(0)
 
-    for font in first_page[Resources][Font].values():
+    # Check if Resources and Font exist
+    if Resources not in first_page:
+        warn(f"PDF first page missing '/Resources' - cannot extract font parameters for '{base_font_name}'", UserWarning)
+        return font_descriptor_params, font_dict_params
+
+    resources = first_page.get(Resources, {})
+    if Font not in resources:
+        warn(f"PDF first page resources missing '/Font' - cannot extract font parameters for '{base_font_name}'", UserWarning)
+        return font_descriptor_params, font_dict_params
+
+    fonts = resources.get(Font, {})
+
+    for font in fonts.values():
+        # Check if BaseFont exists
+        if BaseFont not in font:
+            continue
+
         if base_font_name.replace("/", "") in font[BaseFont]:
-            font_descriptor_params = dict(font[FontDescriptor])
+            # Check if FontDescriptor exists
+            if FontDescriptor in font:
+                font_descriptor_params = dict(font[FontDescriptor])
             font_dict_params = dict(font)
             break
+
+    if not font_dict_params:
+        warn(f"Font '{base_font_name}' not found in PDF - using default parameters", UserWarning)
 
     return font_descriptor_params, font_dict_params
 
@@ -320,6 +353,8 @@ def get_all_available_fonts(pdf: bytes) -> dict:
 
     result = {}
     for key, value in fonts.items():
-        result[value[BaseFont].replace("/", "")] = key
+        # Check if BaseFont exists before accessing
+        if BaseFont in value:
+            result[value[BaseFont].replace("/", "")] = key
 
     return result

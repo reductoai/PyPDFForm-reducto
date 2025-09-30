@@ -113,7 +113,26 @@ def update_checkbox_value(annot: DictionaryObject, check: bool = False) -> None:
         annot (DictionaryObject): The checkbox annotation dictionary.
         check (bool): True to check the checkbox, False to uncheck it. Defaults to False.
     """
-    for each in annot[AP][N]:
+    from warnings import warn
+
+    ap_dict = annot.get(AP)
+    if not ap_dict:
+        warn("Checkbox annotation missing '/AP' (appearance) entry - cannot update value", UserWarning)
+        return
+
+    n_value = ap_dict.get(N, {})
+    if not n_value:
+        warn("Checkbox annotation missing '/AP/N' (normal appearance) entry - cannot update value", UserWarning)
+        return
+
+    # Handle both dictionary (multiple appearance states) and other types
+    appearance_states = n_value.keys() if isinstance(n_value, dict) else []
+
+    if not appearance_states:
+        warn("Checkbox annotation has no appearance states defined - cannot update value", UserWarning)
+        return
+
+    for each in appearance_states:
         if (check and str(each) != Off) or (not check and str(each) == Off):
             annot[NameObject(AS)] = NameObject(each)
             annot[NameObject(V)] = NameObject(each)
@@ -147,13 +166,37 @@ def update_radio_value(annot: DictionaryObject) -> None:
     Args:
         annot (DictionaryObject): The radio button annotation dictionary.
     """
-    if Opt in annot[Parent]:
-        del annot[Parent][Opt]
+    from warnings import warn
 
-    for each in annot[AP][N]:
+    if Parent in annot and Opt in annot[Parent]:
+        try:
+            del annot[Parent][Opt]
+        except Exception as e:
+            warn(f"Failed to delete '/Opt' from radio button parent: {e}", UserWarning)
+
+    ap_dict = annot.get(AP)
+    if not ap_dict:
+        warn("Radio button annotation missing '/AP' (appearance) entry - cannot update value", UserWarning)
+        return
+
+    n_value = ap_dict.get(N, {})
+    if not n_value:
+        warn("Radio button annotation missing '/AP/N' (normal appearance) entry - cannot update value", UserWarning)
+        return
+
+    # Handle both dictionary (multiple appearance states) and other types
+    appearance_states = n_value.keys() if isinstance(n_value, dict) else []
+
+    if not appearance_states:
+        warn("Radio button annotation has no appearance states defined - cannot update value", UserWarning)
+        return
+
+    for each in appearance_states:
         if str(each) != Off:
             annot[NameObject(AS)] = NameObject(each)
-            annot[NameObject(Parent)][NameObject(V)] = NameObject(each)
+            # Check if Parent exists before accessing
+            if Parent in annot:
+                annot[NameObject(Parent)][NameObject(V)] = NameObject(each)
             break
 
 
@@ -172,7 +215,11 @@ def get_radio_value(annot: DictionaryObject) -> bool:
     Returns:
         bool: True if the radio button is selected, False otherwise.
     """
-    for each in annot.get(AP, {}).get(N, []):
+    n_value = annot.get(AP, {}).get(N, {})
+    # Handle both dictionary (multiple appearance states) and other types
+    appearance_states = n_value.keys() if isinstance(n_value, dict) else []
+
+    for each in appearance_states:
         if annot.get(Parent, {}).get(V) == each:
             return True
 
@@ -191,16 +238,40 @@ def update_dropdown_value(annot: DictionaryObject, widget: Dropdown) -> None:
         annot (DictionaryObject): The dropdown annotation dictionary.
         widget (Dropdown): The Dropdown widget object containing the selected value.
     """
+    from warnings import warn
+
     choices = widget.choices or []
-    if Parent in annot and T not in annot:
-        annot[NameObject(Parent)][NameObject(V)] = TextStringObject(
-            choices[widget.value]
+
+    # Validate choices exist
+    if not choices:
+        warn("Dropdown widget has no choices defined - cannot set value", UserWarning)
+        return
+
+    # Validate value is set
+    if widget.value is None:
+        warn("Dropdown widget value is None - cannot set value", UserWarning)
+        return
+
+    # Validate value is within bounds
+    if not (0 <= widget.value < len(choices)):
+        warn(
+            f"Dropdown widget value {widget.value} is out of bounds (0-{len(choices)-1}) - cannot set value",
+            UserWarning
         )
-        annot[NameObject(AP)] = TextStringObject(choices[widget.value])
-    else:
-        annot[NameObject(V)] = TextStringObject(choices[widget.value])
-        annot[NameObject(AP)] = TextStringObject(choices[widget.value])
-        annot[NameObject(I)] = ArrayObject([NumberObject(widget.value)])
+        return
+
+    try:
+        selected_choice = choices[widget.value]
+
+        if Parent in annot and T not in annot:
+            annot[NameObject(Parent)][NameObject(V)] = TextStringObject(selected_choice)
+            annot[NameObject(AP)] = TextStringObject(selected_choice)
+        else:
+            annot[NameObject(V)] = TextStringObject(selected_choice)
+            annot[NameObject(AP)] = TextStringObject(selected_choice)
+            annot[NameObject(I)] = ArrayObject([NumberObject(widget.value)])
+    except Exception as e:
+        warn(f"Failed to update dropdown value: {e}", UserWarning)
 
 
 def get_dropdown_value(annot: DictionaryObject, widget: Dropdown) -> None:
@@ -258,7 +329,7 @@ def get_text_value(annot: DictionaryObject, widget: Text) -> None:
         widget (Text): The Text widget object to update with the retrieved value.
     """
     if Parent in annot and T not in annot:
-        widget.value = annot[Parent].get(V)
+        widget.value = annot.get(Parent, {}).get(V)
     else:
         widget.value = annot.get(V)
 
