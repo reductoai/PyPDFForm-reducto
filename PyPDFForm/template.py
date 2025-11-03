@@ -11,6 +11,7 @@ types of widgets.
 from functools import lru_cache
 from io import BytesIO
 from typing import Dict, List, Tuple, Union, cast
+from warnings import warn
 
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DictionaryObject
@@ -54,41 +55,60 @@ def build_widgets(
 
     for widgets in get_widgets_by_page(pdf_stream).values():
         for widget in widgets:
-            key = get_widget_key(widget, use_full_widget_name)
-            _widget = construct_widget(widget, key)
-            if _widget is not None:
-                _widget.__dict__["tooltip"] = extract_widget_property(
-                    widget, WIDGET_DESCRIPTION_PATTERNS, None, str
+            try:
+                key = get_widget_key(widget, use_full_widget_name)
+                _widget = construct_widget(widget, key)
+                if _widget is not None:
+                    _widget.__dict__["tooltip"] = extract_widget_property(
+                        widget, WIDGET_DESCRIPTION_PATTERNS, None, str
+                    )
+
+                    if isinstance(_widget, Text):
+                        # mostly for schema for now
+                        # doesn't trigger hook
+                        _widget.__dict__["max_length"] = get_text_field_max_length(widget)
+                        _widget.__dict__["multiline"] = get_text_field_multiline(widget)
+                        get_text_value(widget, _widget)
+
+                    if type(_widget) is Checkbox:
+                        _widget.value = get_checkbox_value(widget)
+
+                    if isinstance(_widget, Dropdown):
+                        # actually used for filling value
+                        # doesn't trigger hook
+                        choices = get_dropdown_choices(widget)
+                        if choices is None:
+                            warn(
+                                f"Dropdown widget '{key}' has no choices defined. "
+                                "This may indicate a malformed PDF form field.",
+                                UserWarning,
+                                stacklevel=2,
+                            )
+                        _widget.__dict__["choices"] = choices
+                        get_dropdown_value(widget, _widget)
+
+                    if isinstance(_widget, Radio):
+                        if key not in results:
+                            results[key] = _widget
+
+                        # for schema
+                        results[key].number_of_options += 1
+
+                        if get_radio_value(widget):
+                            results[key].value = results[key].number_of_options - 1
+                        continue
+
+                    results[key] = _widget
+            except Exception as e:
+                # Log warning but continue processing other widgets
+                widget_name = widget.get(T, "Unknown")
+                warn(
+                    f"Failed to process widget '{widget_name}': {type(e).__name__}: {e}. "
+                    "This widget will be skipped.",
+                    UserWarning,
+                    stacklevel=2,
                 )
-
-                if isinstance(_widget, Text):
-                    # mostly for schema for now
-                    # doesn't trigger hook
-                    _widget.__dict__["max_length"] = get_text_field_max_length(widget)
-                    _widget.__dict__["multiline"] = get_text_field_multiline(widget)
-                    get_text_value(widget, _widget)
-
-                if type(_widget) is Checkbox:
-                    _widget.value = get_checkbox_value(widget)
-
-                if isinstance(_widget, Dropdown):
-                    # actually used for filling value
-                    # doesn't trigger hook
-                    _widget.__dict__["choices"] = get_dropdown_choices(widget)
-                    get_dropdown_value(widget, _widget)
-
-                if isinstance(_widget, Radio):
-                    if key not in results:
-                        results[key] = _widget
-
-                    # for schema
-                    results[key].number_of_options += 1
-
-                    if get_radio_value(widget):
-                        results[key].value = results[key].number_of_options - 1
-                    continue
-
-                results[key] = _widget
+                continue
 
     return results
 
@@ -219,11 +239,14 @@ def get_dropdown_choices(widget: dict) -> Union[Tuple[str, ...], None]:
     Returns:
         Union[Tuple[str, ...], None]: A tuple of strings representing the choices in the dropdown, or None if the choices are not specified.
     """
+    choices = extract_widget_property(
+        widget, DROPDOWN_CHOICE_PATTERNS, None, None
+    )
+    if choices is None:
+        return None
     return tuple(
         (each if isinstance(each, str) else str(each[1]))
-        for each in extract_widget_property(
-            widget, DROPDOWN_CHOICE_PATTERNS, None, None
-        )
+        for each in choices
     )
 
 
