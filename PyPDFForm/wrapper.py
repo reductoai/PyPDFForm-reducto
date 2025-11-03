@@ -424,7 +424,16 @@ class PdfWrapper:
 
         for key, value in data.items():
             if key in self.widgets:
-                self.widgets[key].value = value
+                try:
+                    self.widgets[key].value = value
+                except Exception as e:
+                    warn(
+                        f"Failed to set value for widget '{key}': {type(e).__name__}: {e}. "
+                        "This widget will be skipped.",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                    continue
 
         filled_stream, image_drawn_stream = fill(
             self.read(),
