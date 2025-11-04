@@ -8,7 +8,6 @@ and defines specific patterns for identifying and constructing different
 types of widgets.
 """
 
-from functools import lru_cache
 from io import BytesIO
 from typing import Dict, List, Tuple, Union, cast
 
@@ -93,7 +92,6 @@ def build_widgets(
     return results
 
 
-@lru_cache()
 def get_widgets_by_page(pdf: bytes) -> Dict[int, List[dict]]:
     """
     Retrieves widgets from a PDF stream, organized by page number.
