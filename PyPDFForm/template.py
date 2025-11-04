@@ -217,14 +217,25 @@ def get_text_field_max_length(widget: dict) -> Union[int, None]:
     """
     Extracts the maximum length of a text field from a widget dictionary.
 
+    This function safely handles IndirectObject references that may fail to
+    dereference due to malformed PDFs or missing object references.
+
     Args:
         widget (dict): The widget dictionary to extract the max length from.
 
     Returns:
         Union[int, None]: The maximum length of the text field, or None
-            if the max length is not specified.
+            if the max length is not specified or cannot be determined.
     """
-    return int(widget[MaxLen]) or None if MaxLen in widget else None
+    if MaxLen not in widget:
+        return None
+
+    try:
+        max_len_value = widget[MaxLen]
+        result = int(max_len_value)
+        return result if result else None
+    except (AttributeError, TypeError, ValueError):
+        return None
 
 
 def get_dropdown_choices(widget: dict) -> Union[Tuple[str, ...], None]:

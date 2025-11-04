@@ -284,19 +284,30 @@ def get_text_field_multiline(annot: DictionaryObject) -> bool:
     dictionary (or its parent if it's a child annotation) to determine if the
     Multiline flag is set.
 
+    This function safely handles IndirectObject references that may fail to
+    dereference due to malformed PDFs or missing object references.
+
     Args:
         annot (DictionaryObject): The text annotation dictionary.
 
     Returns:
         bool: True if the text field is multiline, False otherwise.
+            Returns False if field flags cannot be determined.
     """
-    if Parent in annot and Ff not in annot:
-        return bool(
-            int(
+    try:
+        if Parent in annot and Ff not in annot:
+            ff_value = (
                 annot[NameObject(Parent)][NameObject(Ff)]
                 if Ff in annot[NameObject(Parent)]
                 else 0
             )
-            & MULTILINE
-        )
-    return bool(int(annot[NameObject(Ff)] if Ff in annot else 0) & MULTILINE)
+            return bool(int(ff_value) & MULTILINE)
+
+        ff_value = annot[NameObject(Ff)] if Ff in annot else 0
+        return bool(int(ff_value) & MULTILINE)
+    except (AttributeError, TypeError, ValueError, KeyError):
+        # AttributeError: IndirectObject with invalid reference
+        # TypeError: Non-numeric value
+        # ValueError: String that can't convert to int
+        # KeyError: Missing expected keys
+        return False
