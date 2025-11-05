@@ -547,18 +547,19 @@ class PdfWrapper:
             filtered_kwargs["suppress_deprecation_notice"] = True
 
             # Get the widget class
+            # Get the widget class
             _class = None
             if widget_type == "text":
                 _class = TextWidget
-            if widget_type == "checkbox":
+            elif widget_type == "checkbox":
                 _class = CheckBoxWidget
-            if widget_type == "dropdown":
+            elif widget_type == "dropdown":
                 _class = DropdownWidget
-            if widget_type == "radio":
+            elif widget_type == "radio":
                 _class = RadioWidget
-            if widget_type == "signature":
+            elif widget_type == "signature":
                 _class = SignatureWidget
-            if widget_type == "image":
+            elif widget_type == "image":
                 _class = ImageWidget
             if _class is None:
                 continue
