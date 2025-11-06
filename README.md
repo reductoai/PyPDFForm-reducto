@@ -13,7 +13,9 @@
 
 ## Introduction
 
-PyPDFForm is a free and open source pure-Python 3 library for PDF form processing. It contains the essential 
+> **Note:** This is a fork of [PyPDFForm](https://github.com/chinapandaman/PyPDFForm) maintained by [Reducto AI](https://reducto.ai).
+
+PyPDFForm is a free and open source pure-Python 3 library for PDF form processing. It contains the essential
 functionalities needed to interact with PDF forms:
 
 * Inspect what data a PDF form needs to be filled with.
@@ -27,7 +29,7 @@ It also supports other common utilities such as extracting pages and merging mul
 Install using [pip](https://pip.pypa.io/en/stable/):
 
 ```shell script
-pip install PyPDFForm
+pip install PyPDFForm-reducto
 ```
 
 ## Quick Example
