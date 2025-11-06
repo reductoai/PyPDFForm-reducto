@@ -3,12 +3,12 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "PyPDFForm"
+name = "PyPDFForm-reducto"
 dynamic = ["version"]
-description = "The Python library for PDF forms."
+description = "The Python library for PDF forms. Forked and maintained by Reducto AI."
 readme = "README.md"
 authors = [
-    {name = "Jinge Li"}
+    {name = "Reducto AI", email = "support@reducto.ai"}
 ]
 license = "MIT"
 license-files = ["LICENSE"]
@@ -35,8 +35,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/chinapandaman/PyPDFForm"
-Documentation = "https://chinapandaman.github.io/PyPDFForm/"
+Homepage = "https://github.com/reductoai/PyPDFForm-reducto"
+Documentation = "https://github.com/reductoai/PyPDFForm-reducto"
+Website = "https://reducto.ai"
+"Original Project" = "https://github.com/chinapandaman/PyPDFForm"
 
 [project.optional-dependencies]
 dev = [
