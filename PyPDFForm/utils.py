@@ -26,6 +26,7 @@ from pypdf.generic import ArrayObject, DictionaryObject, NameObject
 from .constants import SLASH, UNIQUE_SUFFIX_LENGTH, XFA, AcroForm, Annots, Root
 
 
+@lru_cache
 def stream_to_io(stream: bytes) -> BinaryIO:
     """
     Converts a bytes stream to a BinaryIO object, which can be used by PyPDFForm.
@@ -33,7 +34,8 @@ def stream_to_io(stream: bytes) -> BinaryIO:
     This function takes a bytes stream as input and returns a BinaryIO object
     that represents the same data. This is useful because PyPDFForm often
     works with BinaryIO objects, so this function allows you to easily convert
-    a bytes stream to the correct format.
+    a bytes stream to the correct format. The result is cached using lru_cache
+    for performance.
 
     Args:
         stream (bytes): The bytes stream to convert.

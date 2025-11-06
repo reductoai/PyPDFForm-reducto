@@ -7,30 +7,6 @@ import pytest
 from PyPDFForm import Fields, PdfWrapper
 
 
-@pytest.fixture(params=["single", "batch"])
-def create_method(request):
-    """
-    Parametrized fixture that provides both creation methods.
-
-    Returns a callable that creates fields using either:
-    - "single": obj.create_field(field)
-    - "batch": obj.create_fields([field])
-    """
-    method = request.param
-
-    def _create(obj, *fields):
-        if method == "single":
-            # Call create_field for each field sequentially
-            for field in fields:
-                obj = obj.create_field(field)
-            return obj
-        else:  # batch
-            # Call create_fields with all fields at once
-            return obj.create_fields(list(fields))
-
-    return _create
-
-
 def test_create_not_supported_type_not_working(template_stream):
     obj = PdfWrapper(template_stream)
     stream = obj.read()
@@ -50,13 +26,12 @@ def test_create_not_supported_type_not_working(template_stream):
 
 
 @pytest.mark.posix_only
-def test_create_checkbox_default(template_stream, pdf_samples, request, create_method):
+def test_create_checkbox_default(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_checkbox_default.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.CheckBoxField(
                 name="foo",
                 page_number=1,
@@ -76,13 +51,12 @@ def test_create_checkbox_default(template_stream, pdf_samples, request, create_m
 
 
 @pytest.mark.posix_only
-def test_create_checkbox_default_filled(template_stream, pdf_samples, request, create_method):
+def test_create_checkbox_default_filled(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_checkbox_default_filled.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.CheckBoxField(
                 name="foo",
                 page_number=1,
@@ -102,13 +76,12 @@ def test_create_checkbox_default_filled(template_stream, pdf_samples, request, c
 
 
 @pytest.mark.posix_only
-def test_create_checkbox_default_filled_flatten(template_stream, pdf_samples, request, create_method):
+def test_create_checkbox_default_filled_flatten(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_checkbox_default_filled_flatten.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.CheckBoxField(
                 name="foo",
                 page_number=1,
@@ -128,13 +101,12 @@ def test_create_checkbox_default_filled_flatten(template_stream, pdf_samples, re
 
 
 @pytest.mark.posix_only
-def test_create_checkbox_complex(template_stream, pdf_samples, request, create_method):
+def test_create_checkbox_complex(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_checkbox_complex.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.CheckBoxField(
                 name="foo",
                 page_number=1,
@@ -161,13 +133,12 @@ def test_create_checkbox_complex(template_stream, pdf_samples, request, create_m
 
 
 @pytest.mark.posix_only
-def test_create_checkbox_complex_fill(template_stream, pdf_samples, request, create_method):
+def test_create_checkbox_complex_fill(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_checkbox_complex_fill.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.CheckBoxField(
                 name="foo",
                 page_number=1,
@@ -195,13 +166,12 @@ def test_create_checkbox_complex_fill(template_stream, pdf_samples, request, cre
 
 
 @pytest.mark.posix_only
-def test_create_checkbox_complex_fill_flatten(template_stream, pdf_samples, request, create_method):
+def test_create_checkbox_complex_fill_flatten(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_checkbox_complex_fill_flatten.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.CheckBoxField(
                 name="foo",
                 page_number=1,
@@ -229,13 +199,12 @@ def test_create_checkbox_complex_fill_flatten(template_stream, pdf_samples, requ
 
 
 @pytest.mark.posix_only
-def test_create_checkbox_check_fill(template_stream, pdf_samples, request, create_method):
+def test_create_checkbox_check_fill(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_checkbox_check_fill.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.CheckBoxField(
                 name="foo",
                 page_number=1,
@@ -256,13 +225,12 @@ def test_create_checkbox_check_fill(template_stream, pdf_samples, request, creat
 
 
 @pytest.mark.posix_only
-def test_create_checkbox_check_fill_flatten(template_stream, pdf_samples, request, create_method):
+def test_create_checkbox_check_fill_flatten(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_checkbox_check_fill_flatten.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.CheckBoxField(
                 name="foo",
                 page_number=1,
@@ -283,13 +251,12 @@ def test_create_checkbox_check_fill_flatten(template_stream, pdf_samples, reques
 
 
 @pytest.mark.posix_only
-def test_create_checkbox_circle_fill(template_stream, pdf_samples, request, create_method):
+def test_create_checkbox_circle_fill(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_checkbox_circle_fill.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.CheckBoxField(
                 name="foo",
                 page_number=1,
@@ -310,13 +277,12 @@ def test_create_checkbox_circle_fill(template_stream, pdf_samples, request, crea
 
 
 @pytest.mark.posix_only
-def test_create_checkbox_circle_fill_flatten(template_stream, pdf_samples, request, create_method):
+def test_create_checkbox_circle_fill_flatten(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_checkbox_circle_fill_flatten.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.CheckBoxField(
                 name="foo",
                 page_number=1,
@@ -337,13 +303,12 @@ def test_create_checkbox_circle_fill_flatten(template_stream, pdf_samples, reque
 
 
 @pytest.mark.posix_only
-def test_create_checkbox_cross_fill(template_stream, pdf_samples, request, create_method):
+def test_create_checkbox_cross_fill(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_checkbox_cross_fill.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.CheckBoxField(
                 name="foo",
                 page_number=1,
@@ -364,13 +329,12 @@ def test_create_checkbox_cross_fill(template_stream, pdf_samples, request, creat
 
 
 @pytest.mark.posix_only
-def test_create_checkbox_cross_fill_flatten(template_stream, pdf_samples, request, create_method):
+def test_create_checkbox_cross_fill_flatten(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_checkbox_cross_fill_flatten.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.CheckBoxField(
                 name="foo",
                 page_number=1,
@@ -391,11 +355,10 @@ def test_create_checkbox_cross_fill_flatten(template_stream, pdf_samples, reques
 
 
 @pytest.mark.posix_only
-def test_create_text_default(template_stream, pdf_samples, request, create_method):
+def test_create_text_default(template_stream, pdf_samples, request):
     expected_path = os.path.join(pdf_samples, "widget", "test_create_text_default.pdf")
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.TextField(
                 name="foo",
                 page_number=1,
@@ -415,13 +378,12 @@ def test_create_text_default(template_stream, pdf_samples, request, create_metho
 
 
 @pytest.mark.posix_only
-def test_create_text_alpha_bg_color(template_stream, pdf_samples, request, create_method):
+def test_create_text_alpha_bg_color(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_text_alpha_bg_color.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.TextField(
                 name="foo",
                 page_number=1,
@@ -442,13 +404,12 @@ def test_create_text_alpha_bg_color(template_stream, pdf_samples, request, creat
 
 
 @pytest.mark.posix_only
-def test_create_text_align_center(template_stream, pdf_samples, request, create_method):
+def test_create_text_align_center(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_text_align_center.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.TextField(
                 name="foo",
                 page_number=1,
@@ -469,13 +430,12 @@ def test_create_text_align_center(template_stream, pdf_samples, request, create_
 
 
 @pytest.mark.posix_only
-def test_create_text_align_right(template_stream, pdf_samples, request, create_method):
+def test_create_text_align_right(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_text_align_right.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.TextField(
                 name="foo",
                 page_number=1,
@@ -496,13 +456,12 @@ def test_create_text_align_right(template_stream, pdf_samples, request, create_m
 
 
 @pytest.mark.posix_only
-def test_create_text_multiline(template_stream, pdf_samples, request, create_method):
+def test_create_text_multiline(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_text_align_multiline.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.TextField(
                 name="foo",
                 page_number=1,
@@ -523,13 +482,12 @@ def test_create_text_multiline(template_stream, pdf_samples, request, create_met
 
 
 @pytest.mark.posix_only
-def test_create_text_default_filled(template_stream, pdf_samples, request, create_method):
+def test_create_text_default_filled(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_text_default_filled.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.TextField(
                 name="foo",
                 page_number=1,
@@ -549,13 +507,12 @@ def test_create_text_default_filled(template_stream, pdf_samples, request, creat
 
 
 @pytest.mark.posix_only
-def test_create_text_default_filled_flatten(template_stream, pdf_samples, request, create_method):
+def test_create_text_default_filled_flatten(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_text_default_filled_flatten.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.TextField(
                 name="foo",
                 page_number=1,
@@ -692,11 +649,10 @@ def test_create_text_complex_filled_flatten(
 
 
 @pytest.mark.posix_only
-def test_create_text_comb(template_stream, pdf_samples, request, create_method):
+def test_create_text_comb(template_stream, pdf_samples, request):
     expected_path = os.path.join(pdf_samples, "widget", "test_create_text_comb.pdf")
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.TextField(
                 "foo",
                 page_number=1,
@@ -1005,11 +961,10 @@ def test_fill_cmyk_color_flatten(pdf_samples, request):
 
 
 @pytest.mark.posix_only
-def test_create_radio_default(template_stream, pdf_samples, request, create_method):
+def test_create_radio_default(template_stream, pdf_samples, request):
     expected_path = os.path.join(pdf_samples, "widget", "test_create_radio_default.pdf")
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.RadioGroup(
                 name="radio",
                 page_number=2,
@@ -1029,13 +984,12 @@ def test_create_radio_default(template_stream, pdf_samples, request, create_meth
 
 
 @pytest.mark.posix_only
-def test_create_radio_default_filled(template_stream, pdf_samples, request, create_method):
+def test_create_radio_default_filled(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_radio_default_filled.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.RadioGroup(
                 name="radio",
                 page_number=2,
@@ -1055,13 +1009,12 @@ def test_create_radio_default_filled(template_stream, pdf_samples, request, crea
 
 
 @pytest.mark.posix_only
-def test_create_radio_default_filled_flatten(template_stream, pdf_samples, request, create_method):
+def test_create_radio_default_filled_flatten(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_radio_default_filled_flatten.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.RadioGroup(
                 name="radio",
                 page_number=2,
@@ -1081,11 +1034,10 @@ def test_create_radio_default_filled_flatten(template_stream, pdf_samples, reque
 
 
 @pytest.mark.posix_only
-def test_create_radio_complex(template_stream, pdf_samples, request, create_method):
+def test_create_radio_complex(template_stream, pdf_samples, request):
     expected_path = os.path.join(pdf_samples, "widget", "test_create_radio_complex.pdf")
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.RadioGroup(
                 name="radio",
                 page_number=2,
@@ -1111,13 +1063,12 @@ def test_create_radio_complex(template_stream, pdf_samples, request, create_meth
         assert obj.read() == expected
 
 
-def test_create_signature_default(template_stream, pdf_samples, request, create_method):
+def test_create_signature_default(template_stream, pdf_samples, request):
     expected_path = os.path.join(
         pdf_samples, "widget", "test_create_signature_default.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.SignatureField(
                 name="sig_1",
                 page_number=1,
@@ -1205,11 +1156,10 @@ def test_create_signature_default_filled_flatten(
         assert obj.read() == expected
 
 
-def test_create_image_default(template_stream, pdf_samples, request, create_method):
+def test_create_image_default(template_stream, pdf_samples, request):
     expected_path = os.path.join(pdf_samples, "widget", "test_create_image_default.pdf")
     with open(expected_path, "rb+") as f:
-        obj = create_method(
-            PdfWrapper(template_stream),
+        obj = PdfWrapper(template_stream).create_field(
             Fields.ImageField(
                 name="image_1",
                 page_number=1,
