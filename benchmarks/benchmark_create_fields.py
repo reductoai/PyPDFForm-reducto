@@ -77,7 +77,7 @@ def benchmark_single(n_fields):
 
 
 def benchmark_batch(n_fields):
-    """Benchmark using create_fields for batch creation."""
+    """Benchmark using bulk_create_fields for batch creation."""
     blank_pdf = create_blank_pdf(1)
     obj = PdfWrapper(blank_pdf)
 
@@ -113,7 +113,7 @@ def benchmark_batch(n_fields):
         fields.append(field)
 
     start_time = time.perf_counter()
-    obj.create_fields(fields)
+    obj.bulk_create_fields(fields)
     elapsed = time.perf_counter() - start_time
 
     return elapsed
@@ -121,7 +121,7 @@ def benchmark_batch(n_fields):
 
 def main():
     print("=" * 80)
-    print("PyPDFForm Performance Benchmark: create_widget vs create_fields")
+    print("PyPDFForm Performance Benchmark: create_widget vs bulk_create_fields")
     print("=" * 80)
     print()
 
