@@ -8,6 +8,9 @@ dynamic = ["version"]
 description = "The Python library for PDF forms. Forked and maintained by Reducto AI."
 readme = "README.md"
 authors = [
+    {name = "Jinge Li"}
+]
+maintainers = [
     {name = "Reducto AI", email = "support@reducto.ai"}
 ]
 license = "MIT"
