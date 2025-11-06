@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Tests for the copy_watermark_widgets_batch function.
+Tests for the bulk_watermarks function.
 
 These tests verify that the batch watermark copying function produces
 the same results as calling copy_watermark_widgets multiple times,
@@ -13,7 +13,7 @@ import pytest
 from pypdf import PdfWriter
 
 from PyPDFForm import PdfWrapper
-from PyPDFForm.watermark import copy_watermark_widgets, copy_watermark_widgets_batch
+from PyPDFForm.widgets.base import Widget
 from PyPDFForm.widgets.text import TextField, TextWidget
 
 
@@ -33,39 +33,29 @@ def test_batch_single_widget():
     """Test batch function with a single widget."""
     blank_pdf = create_blank_pdf(1)
 
-    # Create watermark for a single widget
+    # Create a single widget
     widget = TextWidget(name="field1", page_number=1, x=10, y=10, width=100, height=20)
-    watermarks = widget.watermarks(blank_pdf)
 
-    # Test batch function
-    result_batch = copy_watermark_widgets_batch(
-        blank_pdf,
-        [watermarks],
-        [["field1"]],
-        [None]
-    )
+    # Test bulk_watermarks function
+    watermarks_bulk = Widget.bulk_watermarks([widget], blank_pdf)
 
-    # Test regular function
-    result_single = copy_watermark_widgets(blank_pdf, watermarks, ["field1"], None)
+    # Test regular watermarks function
+    watermarks_single = widget.watermarks(blank_pdf)
 
-    # Both should produce valid PDFs
-    assert result_batch.startswith(b"%PDF")
-    assert result_single.startswith(b"%PDF")
+    # Both should produce the same number of watermarks (one per page)
+    assert len(watermarks_bulk) == len(watermarks_single)
 
-    # Both should have similar sizes (within 10% - may vary due to PDF internals)
-    size_ratio = len(result_batch) / len(result_single)
-    assert 0.9 <= size_ratio <= 1.1
+    # Both should have watermark data for page 0
+    assert len(watermarks_bulk[0]) > 0
+    assert len(watermarks_single[0]) > 0
 
 
 def test_batch_multiple_widgets():
     """Test batch function with multiple widgets."""
     blank_pdf = create_blank_pdf(1)
 
-    # Create watermarks for multiple widgets
-    all_watermarks = []
-    all_keys = []
-    all_page_nums = []
-
+    # Create multiple widgets
+    widgets = []
     for i in range(5):
         widget = TextWidget(
             name=f"field{i}",
@@ -75,75 +65,38 @@ def test_batch_multiple_widgets():
             width=40,
             height=20
         )
-        watermarks = widget.watermarks(blank_pdf)
-        all_watermarks.append(watermarks)
-        all_keys.append([f"field{i}"])
-        all_page_nums.append(None)
+        widgets.append(widget)
 
-    # Use batch function
-    result_batch = copy_watermark_widgets_batch(
-        blank_pdf,
-        all_watermarks,
-        all_keys,
-        all_page_nums
-    )
+    # Use bulk watermarks function
+    watermarks_bulk = Widget.bulk_watermarks(widgets, blank_pdf)
 
-    # Use sequential calls (simulating the old behavior)
-    result_sequential = blank_pdf
-    for watermarks, keys in zip(all_watermarks, all_keys):
-        result_sequential = copy_watermark_widgets(
-            result_sequential,
-            watermarks,
-            keys,
-            None
-        )
+    # Should have watermarks for each page (1 page in this case)
+    assert len(watermarks_bulk) == 1
 
-    # Both should produce valid PDFs
-    assert result_batch.startswith(b"%PDF")
-    assert result_sequential.startswith(b"%PDF")
+    # The watermark for page 0 should have content
+    assert len(watermarks_bulk[0]) > 0
 
-    # Verify both have widgets by creating PdfWrapper instances
-    wrapper_batch = PdfWrapper(result_batch)
-    wrapper_sequential = PdfWrapper(result_sequential)
-
-    # Both should have all 5 widgets
-    assert len(wrapper_batch.widgets) == 5
-    assert len(wrapper_sequential.widgets) == 5
-
-    # Widget names should match
-    assert set(wrapper_batch.widgets.keys()) == set(wrapper_sequential.widgets.keys())
-    for i in range(5):
-        assert f"field{i}" in wrapper_batch.widgets
-        assert f"field{i}" in wrapper_sequential.widgets
+    # Verify it's larger than a single widget watermark (since it contains 5 widgets)
+    single_widget_watermarks = widgets[0].watermarks(blank_pdf)
+    assert len(watermarks_bulk[0]) > len(single_widget_watermarks[0])
 
 
 def test_batch_empty_list():
-    """Test batch function with empty lists."""
+    """Test batch function with empty list of widgets."""
     blank_pdf = create_blank_pdf(1)
 
-    result = copy_watermark_widgets_batch(
-        blank_pdf,
-        [],
-        [],
-        []
-    )
+    watermarks = Widget.bulk_watermarks([], blank_pdf)
 
-    # Should return a valid PDF
-    assert result.startswith(b"%PDF")
-
-    # Should have no widgets
-    wrapper = PdfWrapper(result)
-    assert len(wrapper.widgets) == 0
+    # Should return a list with one empty watermark (for the single page)
+    assert len(watermarks) == 1
+    assert watermarks[0] == b""
 
 
 def test_batch_multiple_pages():
     """Test batch function with widgets on multiple pages."""
     blank_pdf = create_blank_pdf(3)
 
-    all_watermarks = []
-    all_keys = []
-    all_page_nums = []
-
+    widgets = []
     for page in range(1, 4):
         widget = TextWidget(
             name=f"page{page}_field",
@@ -153,27 +106,16 @@ def test_batch_multiple_pages():
             width=100,
             height=20
         )
-        watermarks = widget.watermarks(blank_pdf)
-        all_watermarks.append(watermarks)
-        all_keys.append([f"page{page}_field"])
-        all_page_nums.append(None)
+        widgets.append(widget)
 
-    result = copy_watermark_widgets_batch(
-        blank_pdf,
-        all_watermarks,
-        all_keys,
-        all_page_nums
-    )
+    watermarks = Widget.bulk_watermarks(widgets, blank_pdf)
 
-    # Should produce valid PDF
-    assert result.startswith(b"%PDF")
+    # Should have watermarks for all 3 pages
+    assert len(watermarks) == 3
 
-    # Should have all widgets
-    wrapper = PdfWrapper(result)
-    assert len(wrapper.widgets) == 3
-    assert "page1_field" in wrapper.widgets
-    assert "page2_field" in wrapper.widgets
-    assert "page3_field" in wrapper.widgets
+    # Each page should have watermark content
+    for i in range(3):
+        assert len(watermarks[i]) > 0
 
 
 def test_batch_vs_sequential_functional_equivalence():
@@ -205,7 +147,7 @@ def test_batch_vs_sequential_functional_equivalence():
         )
         for i in range(10)
     ]
-    obj_batch.create_fields(fields)
+    obj_batch.bulk_create_fields(fields)
 
     # Both should have the same number of widgets
     assert len(obj_sequential.widgets) == len(obj_batch.widgets) == 10
