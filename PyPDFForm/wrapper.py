@@ -18,6 +18,7 @@ underlying PDF manipulation.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import asdict
 from functools import cached_property
 from typing import TYPE_CHECKING, BinaryIO, Dict, List, Sequence, Tuple, Union
@@ -41,6 +42,7 @@ from .utils import (enable_adobe_mode, generate_unique_suffix,
                     get_page_streams, merge_two_pdfs, remove_all_widgets)
 from .watermark import (copy_watermark_widgets, create_watermarks_and_draw,
                         merge_watermarks_with_pdf)
+from .widgets import CheckBoxField, ImageField, SignatureField
 from .widgets.checkbox import CheckBoxWidget
 from .widgets.dropdown import DropdownWidget
 from .widgets.image import ImageWidget
@@ -457,6 +459,96 @@ class PdfWrapper:
         if image_drawn_stream is not None:
             # because copy_watermark_widgets and remove_all_widgets
             self._reregister_font()
+
+        return self
+
+    def bulk_create_fields(self, fields: List[FieldTypes]) -> PdfWrapper:
+        """
+        Creates multiple new form fields (widgets) on the PDF in a single operation.
+
+        This method takes a list of field definition objects (`FieldTypes`),
+        groups them by type (if necessary for specific widget handling, like CheckBoxField),
+        and then delegates the creation to the internal `_bulk_create_fields` method.
+        This is the preferred method for creating multiple fields as it minimizes
+        PDF manipulation overhead.
+
+        Args:
+            fields (List[FieldTypes]): A list of field definition objects
+                (e.g., `TextField`, `CheckBoxField`, etc.) to be created.
+
+        Returns:
+            PdfWrapper: The `PdfWrapper` object, allowing for method chaining.
+        """
+
+        needs_separate_creation = [CheckBoxField, SignatureField, ImageField]
+        needs_separate_creation_dict = defaultdict(list)
+        general_creation = []
+
+        for each in fields:
+            if type(each) in needs_separate_creation:
+                needs_separate_creation_dict[type(each)].append(each)
+            else:
+                general_creation.append(each)
+
+        needs_separate_creation_dict[SignatureField] = needs_separate_creation_dict.pop(
+            SignatureField, []
+        ) + needs_separate_creation_dict.pop(ImageField, [])
+
+        for each in list(needs_separate_creation_dict.values()) + [general_creation]:
+            if each:
+                self._bulk_create_fields(each)
+
+        return self
+
+    def _bulk_create_fields(self, fields: List[FieldTypes]) -> PdfWrapper:
+        """
+        Internal method to create multiple new form fields (widgets) on the PDF in a single operation.
+
+        This method takes a list of field definition objects (`FieldTypes`),
+        converts them into `Widget` objects, and efficiently draws them onto the
+        PDF using bulk watermarking. It is designed to be called by the public
+        `bulk_create_fields` method after fields have been grouped for creation.
+
+        Args:
+            fields (List[FieldTypes]): A list of field definition objects
+                (e.g., `TextField`, `CheckBoxField`, etc.) to be created.
+
+        Returns:
+            PdfWrapper: The `PdfWrapper` object, allowing for method chaining.
+        """
+
+        widgets = []
+        widget_class = None
+        for field in fields:
+            field_dict = asdict(field)
+            widget_class = getattr(field, "_widget_class")
+            name = field_dict.pop("name")
+            page_number = field_dict.pop("page_number")
+            x = field_dict.pop("x")
+            y = field_dict.pop("y")
+            widgets.append(
+                widget_class(
+                    name=name,
+                    page_number=page_number,
+                    x=x,
+                    y=y,
+                    **{k: v for k, v in field_dict.items() if v is not None},
+                )
+            )
+
+        watermarks = getattr(widget_class, "bulk_watermarks")(widgets, self.read())
+        self._stream = copy_watermark_widgets(
+            self.read(),
+            watermarks,
+            [widget.name for widget in widgets],
+            None,
+        )
+
+        self._init_helper()
+
+        for widget in widgets:
+            for k, v in widget.hook_params:
+                self.widgets[widget.name].__setattr__(k, v)
 
         return self
 
