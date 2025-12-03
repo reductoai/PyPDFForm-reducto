@@ -70,37 +70,10 @@ def signature_image_handler(
     return any_image_to_draw
 
 
-def get_drawn_stream(to_draw: dict, stream: bytes, action: str) -> bytes:
-    """Applies watermarks to specific pages of a PDF based on the provided drawing instructions.
-
-    This function takes a dictionary of drawing instructions and applies watermarks to the
-    specified pages of a PDF. It iterates through the drawing instructions, creates watermarks
-    for each page, and merges the watermarks with the original PDF content. The function
-    supports various drawing actions, such as adding images or text.
-
-    Args:
-        to_draw (dict): A dictionary containing page numbers as keys and lists of drawing instructions as values.
-                         Each drawing instruction specifies the type of drawing, position, dimensions, and content.
-        stream (bytes): The PDF content as bytes.
-        action (str): The type of action to perform (e.g., "image", "text").
-
-    Returns:
-        bytes: The modified PDF content with watermarks applied.
-    """
-    watermark_list = []
-    for page, stuffs in to_draw.items():
-        watermark_list.append(b"")
-        watermarks = create_watermarks_and_draw(stream, page, action, stuffs)
-        for i, watermark in enumerate(watermarks):
-            if watermark:
-                watermark_list[i] = watermark
-
-    return merge_watermarks_with_pdf(stream, watermark_list)
-
-
 def fill(
     template: bytes,
     widgets: Dict[str, WIDGET_TYPES],
+    need_appearances: bool,
     use_full_widget_name: bool,
     flatten: bool = False,
 ) -> tuple:
@@ -116,6 +89,9 @@ def fill(
         template (bytes): The PDF template as bytes.
         widgets (Dict[str, WIDGET_TYPES]): A dictionary of widgets to fill, where the keys are the
                                             widget names and the values are the widget objects.
+        need_appearances (bool): If True, skips updating the appearance stream (AP) for
+            text and dropdown fields to maintain compatibility with Adobe Reader's
+            behavior for certain fields.
         use_full_widget_name (bool): Whether to use the full widget name when looking up widgets
                                       in the `widgets` dictionary.
         flatten (bool): Whether to flatten the filled PDF. Defaults to False.
@@ -125,6 +101,7 @@ def fill(
                The image drawn stream is only returned if there are any image or signature widgets
                in the form.
     """
+    # pylint: disable=R0912
     pdf = PdfReader(stream_to_io(template))
     out = PdfWriter()
     out.append(pdf)
@@ -164,15 +141,24 @@ def fill(
                 if widget.value == radio_button_tracker[key] - 1:
                     update_radio_value(annot)
             elif isinstance(widget, Dropdown):
-                update_dropdown_value(annot, widget)
+                update_dropdown_value(annot, widget, need_appearances)
             elif isinstance(widget, Text):
-                update_text_value(annot, widget)
+                update_text_value(annot, widget, need_appearances)
 
     with BytesIO() as f:
         out.write(f)
         f.seek(0)
         result = f.read()
 
+    if not any_image_to_draw:
+        return result, None
+
+    images = []
+    for page, elements in images_to_draw.items():
+        images.extend(
+            [{"page_number": page, "type": "image", **element} for element in elements]
+        )
+
     return result, (
-        get_drawn_stream(images_to_draw, result, "image") if any_image_to_draw else None
+        merge_watermarks_with_pdf(result, create_watermarks_and_draw(result, images))
     )

@@ -254,8 +254,14 @@ def get_dropdown_choices(widget: dict) -> Union[Tuple[str, ...], None]:
     if choices is None:
         return None
     return tuple(
-        (each if isinstance(each, str) else str(each[1]))
-        for each in choices
+        (
+            each.get_object()
+            if isinstance(each.get_object(), str)
+            else str(each.get_object()[1])
+        )
+        for each in extract_widget_property(
+            widget, DROPDOWN_CHOICE_PATTERNS, None, None
+        )
     )
 
 

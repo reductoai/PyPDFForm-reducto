@@ -464,11 +464,11 @@ def test_merge_sejda_pdf_forms(issue_pdf_directory):
         {"name": "Dan", "dob": "1988-12-30", "note": "test3"},
     ]
 
-    obj = PdfWrapper(adobe_mode=True)
+    obj = PdfWrapper(need_appearances=True)
 
     for i in range(3):
         obj += PdfWrapper(
-            os.path.join(issue_pdf_directory, "PPF-884.pdf"), adobe_mode=True
+            os.path.join(issue_pdf_directory, "PPF-884.pdf"), need_appearances=True
         ).fill(data[i])
 
     result = PdfReader(stream_to_io(obj.read()))
@@ -484,7 +484,7 @@ def test_merge_sejda_pdf_forms(issue_pdf_directory):
 
 def test_xfa_to_regular_form(issue_pdf_directory, request):
     obj = PdfWrapper(
-        os.path.join(issue_pdf_directory, "1087.pdf"), adobe_mode=True
+        os.path.join(issue_pdf_directory, "1087.pdf"), need_appearances=True
     ).fill(
         {
             "G28CheckBox[0]": True,
@@ -517,3 +517,22 @@ def test_extract_multiline_property(issue_pdf_directory):
     for k, v in obj.widgets.items():
         if "AdditionalInfo" in k:
             assert v.multiline
+
+
+def test_get_dropdown_choices(issue_pdf_directory, request):
+    obj = PdfWrapper(os.path.join(issue_pdf_directory, "PPF-1213.pdf")).fill(
+        {
+            "Dropdown8": 1,
+            "Dropdown9": 2,
+            "Dropdown10": 3,
+            "Dropdown11": 4,
+        }
+    )
+
+    expected_path = os.path.join(issue_pdf_directory, "PPF-1213_expected.pdf")
+    request.config.results["expected_path"] = expected_path
+    request.config.results["stream"] = obj.read()
+    with open(expected_path, "rb+") as f:
+        expected = f.read()
+        assert len(obj.read()) == len(expected)
+        assert obj.read() == expected

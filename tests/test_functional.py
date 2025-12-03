@@ -5,10 +5,9 @@ import os
 import pytest
 from jsonschema import ValidationError, validate
 
-from PyPDFForm import PdfWrapper
+from PyPDFForm import BlankPage, PdfWrapper, RawElements, Widgets
 from PyPDFForm.constants import DA, UNIQUE_SUFFIX_LENGTH, T, V
 from PyPDFForm.middleware.base import Widget
-from PyPDFForm.middleware.text import Text
 from PyPDFForm.template import get_widgets_by_page
 
 
@@ -97,7 +96,7 @@ def test_register_global_font_fill(
         )
         assert "new_font" in obj.fonts
         for v in obj.widgets.values():
-            if isinstance(v, Text):
+            if isinstance(v, Widgets.Text):
                 v.font = "new_font"
         obj.fill(
             data_dict,
@@ -128,7 +127,7 @@ def test_register_global_font_fill_flatten(
             sample_font_stream,
         )
         for v in obj.widgets.values():
-            if isinstance(v, Text):
+            if isinstance(v, Widgets.Text):
                 v.font = "new_font"
         obj.fill(
             data_dict,
@@ -152,7 +151,7 @@ def test_fill_font_20(template_stream, pdf_samples, data_dict, request):
     ) as f:
         obj = PdfWrapper(template_stream)
         for v in obj.widgets.values():
-            if isinstance(v, Text):
+            if isinstance(v, Widgets.Text):
                 v.font_size = 20
         obj.fill(
             data_dict,
@@ -175,7 +174,7 @@ def test_fill_font_20_flatten(template_stream, pdf_samples, data_dict, request):
     ) as f:
         obj = PdfWrapper(template_stream)
         for v in obj.widgets.values():
-            if isinstance(v, Text):
+            if isinstance(v, Widgets.Text):
                 v.font_size = 20
         obj.fill(
             data_dict,
@@ -199,7 +198,7 @@ def test_fill_font_color_red(template_stream, pdf_samples, data_dict, request):
     ) as f:
         obj = PdfWrapper(template_stream)
         for v in obj.widgets.values():
-            if isinstance(v, Text):
+            if isinstance(v, Widgets.Text):
                 v.font_color = (1, 0, 0)
         obj.fill(
             data_dict,
@@ -222,7 +221,7 @@ def test_fill_font_color_red_flatten(template_stream, pdf_samples, data_dict, re
     ) as f:
         obj = PdfWrapper(template_stream)
         for v in obj.widgets.values():
-            if isinstance(v, Text):
+            if isinstance(v, Widgets.Text):
                 v.font_color = (1, 0, 0)
         obj.fill(data_dict, flatten=True)
 
@@ -443,13 +442,17 @@ def test_fill_sejda_flatten_then_unflatten(
 def test_draw_text_on_one_page(template_stream, pdf_samples, request):
     expected_path = os.path.join(pdf_samples, "test_draw_text_on_one_page.pdf")
     with open(expected_path, "rb+") as f:
-        obj = PdfWrapper(template_stream).draw_text(
-            "drawn_text",
-            1,
-            300,
-            225,
-            font_size=20,
-            font_color=(1, 0, 0),
+        obj = PdfWrapper(template_stream).draw(
+            [
+                RawElements.RawText(
+                    "drawn_text",
+                    1,
+                    300,
+                    225,
+                    font_size=20,
+                    font_color=(1, 0, 0),
+                )
+            ]
         )
 
         request.config.results["expected_path"] = expected_path
@@ -466,13 +469,17 @@ def test_draw_multiline_text_on_one_page(template_stream, pdf_samples, request):
         pdf_samples, "test_draw_multiline_text_on_one_page.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = PdfWrapper(template_stream).draw_text(
-            "drawn_text\ndrawn_text\ndrawn_text",
-            1,
-            300,
-            225,
-            font_size=20,
-            font_color=(1, 0, 0),
+        obj = PdfWrapper(template_stream).draw(
+            [
+                RawElements.RawText(
+                    "drawn_text\ndrawn_text\ndrawn_text",
+                    1,
+                    300,
+                    225,
+                    font_size=20,
+                    font_color=(1, 0, 0),
+                )
+            ]
         )
 
         request.config.results["expected_path"] = expected_path
@@ -489,13 +496,17 @@ def test_draw_text_on_radio_template(
 ):
     expected_path = os.path.join(pdf_samples, "test_draw_text_on_radio_template.pdf")
     with open(expected_path, "rb+") as f:
-        obj = PdfWrapper(template_with_radiobutton_stream).draw_text(
-            "drawn_text",
-            1,
-            300,
-            225,
-            font_size=20,
-            font_color=(1, 0, 0),
+        obj = PdfWrapper(template_with_radiobutton_stream).draw(
+            [
+                RawElements.RawText(
+                    "drawn_text",
+                    1,
+                    300,
+                    225,
+                    font_size=20,
+                    font_color=(1, 0, 0),
+                )
+            ]
         )
 
         request.config.results["expected_path"] = expected_path
@@ -510,13 +521,17 @@ def test_draw_text_on_radio_template(
 def test_draw_text_on_sejda_template(sejda_template, pdf_samples, request):
     expected_path = os.path.join(pdf_samples, "test_draw_text_on_sejda_template.pdf")
     with open(expected_path, "rb+") as f:
-        obj = PdfWrapper(sejda_template).draw_text(
-            "drawn_text",
-            1,
-            300,
-            225,
-            font_size=20,
-            font_color=(1, 0, 0),
+        obj = PdfWrapper(sejda_template).draw(
+            [
+                RawElements.RawText(
+                    "drawn_text",
+                    1,
+                    300,
+                    225,
+                    font_size=20,
+                    font_color=(1, 0, 0),
+                )
+            ]
         )
 
         request.config.results["expected_path"] = expected_path
@@ -532,13 +547,17 @@ def test_draw_image_on_one_page(template_stream, image_samples, pdf_samples, req
     expected_path = os.path.join(pdf_samples, "test_draw_image_on_one_page.pdf")
     with open(expected_path, "rb+") as f:
         with open(os.path.join(image_samples, "sample_image.jpg"), "rb+") as _f:
-            obj = PdfWrapper(template_stream).draw_image(
-                _f,
-                2,
-                100,
-                100,
-                400,
-                225,
+            obj = PdfWrapper(template_stream).draw(
+                [
+                    RawElements.RawImage(
+                        _f,
+                        2,
+                        100,
+                        100,
+                        400,
+                        225,
+                    )
+                ]
             )
 
         expected = f.read()
@@ -555,13 +574,17 @@ def test_draw_image_on_radio_template(
     expected_path = os.path.join(pdf_samples, "test_draw_image_on_radio_template.pdf")
     with open(expected_path, "rb+") as f:
         with open(os.path.join(image_samples, "sample_image.jpg"), "rb+") as _f:
-            obj = PdfWrapper(template_with_radiobutton_stream).draw_image(
-                _f,
-                2,
-                100,
-                100,
-                400,
-                225,
+            obj = PdfWrapper(template_with_radiobutton_stream).draw(
+                [
+                    RawElements.RawImage(
+                        _f,
+                        2,
+                        100,
+                        100,
+                        400,
+                        225,
+                    )
+                ]
             )
 
         expected = f.read()
@@ -579,13 +602,17 @@ def test_draw_image_on_sejda_template(
     expected_path = os.path.join(pdf_samples, "test_draw_image_on_sejda_template.pdf")
     with open(expected_path, "rb+") as f:
         with open(os.path.join(image_samples, "sample_image.jpg"), "rb+") as _f:
-            obj = PdfWrapper(sejda_template).draw_image(
-                _f,
-                2,
-                100,
-                100,
-                400,
-                225,
+            obj = PdfWrapper(sejda_template).draw(
+                [
+                    RawElements.RawImage(
+                        _f,
+                        2,
+                        100,
+                        100,
+                        400,
+                        225,
+                    )
+                ]
             )
 
         expected = f.read()
@@ -603,13 +630,17 @@ def test_draw_png_image_on_one_page(
 ):
     expected_path = os.path.join(pdf_samples, "test_draw_png_image_on_one_page.pdf")
     with open(expected_path, "rb+") as f:
-        obj = PdfWrapper(template_stream).draw_image(
-            os.path.join(image_samples, "sample_png_image.png"),
-            2,
-            100,
-            100,
-            400,
-            225,
+        obj = PdfWrapper(template_stream).draw(
+            [
+                RawElements.RawImage(
+                    os.path.join(image_samples, "sample_png_image.png"),
+                    2,
+                    100,
+                    100,
+                    400,
+                    225,
+                )
+            ]
         )
 
         expected = f.read()
@@ -628,14 +659,39 @@ def test_draw_transparent_png_image_on_one_page(
         pdf_samples, "test_draw_transparent_png_image_on_one_page.pdf"
     )
     with open(expected_path, "rb+") as f:
-        obj = PdfWrapper(template_stream).draw_image(
-            os.path.join(image_samples, "sample_transparent_png.png"),
-            1,
-            100,
-            100,
-            400,
-            225,
+        obj = PdfWrapper(template_stream).draw(
+            [
+                RawElements.RawImage(
+                    os.path.join(image_samples, "sample_transparent_png.png"),
+                    1,
+                    100,
+                    100,
+                    400,
+                    225,
+                )
+            ]
         )
+
+        expected = f.read()
+
+        request.config.results["expected_path"] = expected_path
+        request.config.results["stream"] = obj.read()
+        assert len(obj.read()) == len(expected)
+        assert obj.read() == expected
+
+
+def test_draw_text_and_image(template_stream, image_samples, pdf_samples, request):
+    expected_path = os.path.join(pdf_samples, "test_draw_text_and_image.pdf")
+    with open(expected_path, "rb+") as f:
+        with open(os.path.join(image_samples, "sample_image.jpg"), "rb+") as _f:
+            obj = PdfWrapper(template_stream).draw(
+                [
+                    RawElements.RawText(
+                        "drawn_text", 1, 300, 225, font_size=20, font_color=(1, 0, 0)
+                    ),
+                    RawElements.RawImage(_f, 2, 100, 100, 400, 225, rotation=180),
+                ]
+            )
 
         expected = f.read()
 
@@ -1196,3 +1252,35 @@ def test_uncheck_checkbox_flatten(pdf_samples, request):
 
         assert len(obj.read()) == len(expected)
         assert obj.read() == expected
+
+
+@pytest.mark.posix_only
+def test_blank_page(pdf_samples, request):
+    expected_path = os.path.join(pdf_samples, "test_blank_page.pdf")
+    with open(expected_path, "rb+") as f:
+        obj = PdfWrapper(BlankPage() * 1)
+
+        request.config.results["expected_path"] = expected_path
+        request.config.results["stream"] = obj.read()
+
+        expected = f.read()
+
+        assert len(obj.read()) == len(expected)
+        request.config.results["skip_regenerate"] = len(obj.read()) == len(expected)
+
+
+@pytest.mark.posix_only
+def test_blank_page_custom_size_multiply(pdf_samples, request):
+    expected_path = os.path.join(
+        pdf_samples, "test_blank_page_custom_size_multiply.pdf"
+    )
+    with open(expected_path, "rb+") as f:
+        obj = PdfWrapper(BlankPage(595.35, 841.995) * 3)
+
+        request.config.results["expected_path"] = expected_path
+        request.config.results["stream"] = obj.read()
+
+        expected = f.read()
+
+        assert len(obj.read()) == len(expected)
+        request.config.results["skip_regenerate"] = len(obj.read()) == len(expected)

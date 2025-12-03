@@ -11,6 +11,14 @@
     <a href="https://pepy.tech/projects/pypdfform"><img src="https://static.pepy.tech/badge/pypdfform/month"></a>
 </p>
 
+## Important Announcement
+
+Hello fellow Python developers!
+
+Please read [this article](https://chinapandaman.github.io/PyPDFForm/news/2025-11-22/) about the upcoming v4.0.0 release and official deprecations of some old APIs.
+
+Happy hacking!
+
 ## Introduction
 
 > **Note:** This is a fork of [PyPDFForm](https://github.com/chinapandaman/PyPDFForm) maintained by [Reducto AI](https://reducto.ai).
@@ -26,7 +34,7 @@ It also supports other common utilities such as extracting pages and merging mul
 
 ## Installing
 
-Install using [pip](https://pip.pypa.io/en/stable/):
+Install using [pip](https://pypi.org/project/PyPDFForm/):
 
 ```shell script
 pip install PyPDFForm-reducto
@@ -40,7 +48,7 @@ A sample PDF form can be found [here](https://chinapandaman.github.io/PyPDFForm/
 ```python
 from PyPDFForm import PdfWrapper
 
-filled = PdfWrapper("sample_template.pdf", adobe_mode=True).fill(
+filled = PdfWrapper("sample_template.pdf", need_appearances=True).fill(
     {
         "test": "test_1",
         "check": True,

@@ -21,28 +21,28 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import asdict
 from functools import cached_property
-from typing import TYPE_CHECKING, BinaryIO, Dict, List, Sequence, Tuple, Union
-from warnings import warn
+from typing import TYPE_CHECKING, BinaryIO, Dict, List, Tuple, Union
 
 from .adapter import fp_or_f_obj_or_stream_to_stream
-from .constants import (DEFAULT_FONT, DEFAULT_FONT_COLOR, DEFAULT_FONT_SIZE,
-                        DEPRECATION_NOTICE, VERSION_IDENTIFIER_PREFIX,
-                        VERSION_IDENTIFIERS)
+from .ap import appearance_streams_handler
+from .constants import VERSION_IDENTIFIER_PREFIX, VERSION_IDENTIFIERS
 from .coordinate import generate_coordinate_grid
+from .deprecation import deprecation_notice
 from .filler import fill
 from .font import (get_all_available_fonts, register_font,
                    register_font_acroform)
 from .hooks import trigger_widget_hooks
-from .image import rotate_image
 from .middleware.dropdown import Dropdown
 from .middleware.signature import Signature
 from .middleware.text import Text
+from .raw import RawText, RawTypes
 from .template import build_widgets, update_widget_keys
-from .utils import (enable_adobe_mode, generate_unique_suffix,
-                    get_page_streams, merge_two_pdfs, remove_all_widgets)
+from .types import PdfWrapperList
+from .utils import (generate_unique_suffix, get_page_streams, merge_pdfs,
+                    remove_all_widgets)
 from .watermark import (copy_watermark_widgets, create_watermarks_and_draw,
                         merge_watermarks_with_pdf)
-from .widgets import CheckBoxField, ImageField, SignatureField
+from .widgets import CheckBoxField, ImageField, RadioGroup, SignatureField
 from .widgets.checkbox import CheckBoxWidget
 from .widgets.dropdown import DropdownWidget
 from .widgets.image import ImageWidget
@@ -69,13 +69,15 @@ class PdfWrapper:
             These parameters can be set during initialization using keyword arguments.
             Current parameters include:
                 - `use_full_widget_name` (bool): Whether to use the full widget name when filling the form.
-                - `adobe_mode` (bool): Whether to enable Adobe-specific compatibility mode.
+                - `need_appearances` (bool): Whether to set the `NeedAppearances` flag in the PDF's AcroForm dictionary.
+                - `generate_appearance_streams` (bool): Whether to explicitly generate appearance streams for all form fields using pikepdf.
 
     """
 
     USER_PARAMS = [
         ("use_full_widget_name", False),
-        ("adobe_mode", False),
+        ("need_appearances", False),
+        ("generate_appearance_streams", False),
     ]
 
     def __init__(
@@ -96,7 +98,7 @@ class PdfWrapper:
                 Defaults to an empty byte string (b""), which creates a blank PDF.
             **kwargs: Additional keyword arguments to configure the `PdfWrapper`.
                 These arguments are used to set the user-configurable parameters defined in `USER_PARAMS`.
-                For example: `use_full_widget_name=True` or `adobe_mode=False`.
+                For example: `use_full_widget_name=True` or `need_appearances=False`.
         """
 
         super().__init__()
@@ -110,6 +112,9 @@ class PdfWrapper:
         # sets attrs from kwargs
         for attr, default in self.USER_PARAMS:
             setattr(self, attr, kwargs.get(attr, default))
+
+        if getattr(self, "generate_appearance_streams") is True:
+            self.need_appearances = True
 
         self._init_helper()
 
@@ -127,10 +132,10 @@ class PdfWrapper:
             PdfWrapper: A new `PdfWrapper` object containing the merged PDFs.
         """
 
-        if not self.read():
+        if not self or not self.read():
             return other
 
-        if not other.read():
+        if not other or not other.read():
             return self
 
         unique_suffix = generate_unique_suffix()
@@ -142,7 +147,7 @@ class PdfWrapper:
 
         # user params are based on the first object
         result = self.__class__(
-            merge_two_pdfs(self.read(), other.read()),
+            merge_pdfs([self.read(), other.read()]),
             **{each[0]: getattr(self, each[0], each[1]) for each in self.USER_PARAMS},
         )
 
@@ -282,14 +287,14 @@ class PdfWrapper:
         return list(self._available_fonts.keys())
 
     @cached_property
-    def pages(self) -> Sequence[PdfWrapper]:
+    def pages(self) -> PdfWrapperList:
         """
-        Returns a sequence of `PdfWrapper` objects, each representing a single page in the PDF document.
+        Returns a list of `PdfWrapper` objects, each representing a single page in the PDF document.
 
         This allows you to work with individual pages of the PDF, for example, to extract text or images from a specific page.
 
         Returns:
-            Sequence[PdfWrapper]: A sequence of `PdfWrapper` objects, one for each page in the PDF.
+            PdfWrapperList: A list of `PdfWrapper` objects, one for each page in the PDF.
         """
 
         result = [
@@ -306,14 +311,16 @@ class PdfWrapper:
                 for page in result:
                     page.register_font(event[0], event[1])
 
-        return result
+        return PdfWrapperList(result)
 
     def read(self) -> bytes:
         """
         Reads the PDF content from the underlying stream.
 
         This method returns the current state of the PDF as a byte string.
-        It also triggers any pending widget hooks and applies Adobe mode if enabled.
+        It also triggers any pending widget hooks and applies necessary PDF settings
+        like setting the `NeedAppearances` flag or generating appearance streams
+        if configured.
 
         Returns:
             bytes: The PDF content as bytes.
@@ -336,8 +343,10 @@ class PdfWrapper:
                 getattr(self, "use_full_widget_name"),
             )
 
-        if getattr(self, "adobe_mode") and self._stream:
-            self._stream = enable_adobe_mode(self._stream)  # cached
+        if getattr(self, "need_appearances") and self._stream:
+            self._stream = appearance_streams_handler(
+                self._stream, getattr(self, "generate_appearance_streams")
+            )  # cached
 
         return self._stream
 
@@ -440,6 +449,7 @@ class PdfWrapper:
         filled_stream, image_drawn_stream = fill(
             self.read(),
             self.widgets,
+            need_appearances=getattr(self, "need_appearances"),
             use_full_widget_name=getattr(self, "use_full_widget_name"),
             flatten=kwargs.get("flatten", False),
         )
@@ -480,7 +490,12 @@ class PdfWrapper:
             PdfWrapper: The `PdfWrapper` object, allowing for method chaining.
         """
 
-        needs_separate_creation = [CheckBoxField, SignatureField, ImageField]
+        needs_separate_creation = [
+            CheckBoxField,
+            RadioGroup,
+            SignatureField,
+            ImageField,
+        ]
         needs_separate_creation_dict = defaultdict(list)
         general_creation = []
 
@@ -493,6 +508,9 @@ class PdfWrapper:
         needs_separate_creation_dict[SignatureField] = needs_separate_creation_dict.pop(
             SignatureField, []
         ) + needs_separate_creation_dict.pop(ImageField, [])
+        needs_separate_creation_dict[CheckBoxField] = needs_separate_creation_dict.pop(
+            CheckBoxField, []
+        ) + needs_separate_creation_dict.pop(RadioGroup, [])
 
         for each in list(needs_separate_creation_dict.values()) + [general_creation]:
             if each:
@@ -620,14 +638,11 @@ class PdfWrapper:
             PdfWrapper: The `PdfWrapper` object, allowing for method chaining.
         """
 
+        # TODO: deprecate in v4.0.0
         if not kwargs.get("suppress_deprecation_notice"):
-            warn(
-                DEPRECATION_NOTICE.format(
-                    f"{self.__class__.__name__}.create_widget()",
-                    f"{self.__class__.__name__}.create_field()",
-                ),
-                DeprecationWarning,  # noqa: PT030
-                stacklevel=2,
+            deprecation_notice(
+                f"{self.__class__.__name__}.create_widget()",
+                f"{self.__class__.__name__}.create_field()",
             )
 
         _class = None
@@ -723,96 +738,23 @@ class PdfWrapper:
 
         return self
 
-    def draw_text(
-        self,
-        text: str,
-        page_number: int,
-        x: Union[float, int],
-        y: Union[float, int],
-        **kwargs,
-    ) -> PdfWrapper:
+    def draw(self, elements: List[RawTypes]) -> PdfWrapper:
         """
-        Draws text on the PDF.
+        Draws raw elements (text, images, etc.) directly onto the PDF pages.
+
+        This method is the primary mechanism for drawing non-form field content.
+        It takes a list of `RawText` or `RawImage` objects and renders them
+        onto the PDF document as watermarks.
 
         Args:
-            text (str): The text to draw.
-            page_number (int): The page number to draw on.
-            x (Union[float, int]): The x coordinate of the text.
-            y (Union[float, int]): The y coordinate of the text.
-            **kwargs: Additional keyword arguments:
-                - `font` (str): The name of the font to use (default: DEFAULT_FONT).
-                - `font_size` (float): The font size in points (default: DEFAULT_FONT_SIZE).
-                - `font_color` (Tuple[float, float, float]): The font color as an RGB tuple (default: DEFAULT_FONT_COLOR).
+            elements (List[RawTypes]): A list of raw elements to draw (e.g., [RawText(...), RawImage(...)]).
 
         Returns:
             PdfWrapper: The `PdfWrapper` object, allowing for method chaining.
         """
 
-        new_widget = Text("new")
-        new_widget.value = text
-        new_widget.font = kwargs.get("font", DEFAULT_FONT)
-        new_widget.font_size = kwargs.get("font_size", DEFAULT_FONT_SIZE)
-        new_widget.font_color = kwargs.get("font_color", DEFAULT_FONT_COLOR)
-
         watermarks = create_watermarks_and_draw(
-            self.read(),
-            page_number,
-            "text",
-            [
-                {
-                    "widget": new_widget,
-                    "x": x,
-                    "y": y,
-                }
-            ],
-        )
-
-        stream_with_widgets = self.read()
-        self._stream = merge_watermarks_with_pdf(self.read(), watermarks)
-        self._stream = copy_watermark_widgets(
-            remove_all_widgets(self.read()), stream_with_widgets, None, None
-        )
-        # because copy_watermark_widgets and remove_all_widgets
-        self._reregister_font()
-
-        return self
-
-    def draw_image(
-        self,
-        image: Union[bytes, str, BinaryIO],
-        page_number: int,
-        x: Union[float, int],
-        y: Union[float, int],
-        width: Union[float, int],
-        height: Union[float, int],
-        rotation: Union[float, int] = 0,
-    ) -> PdfWrapper:
-        """
-        Draws an image on the PDF.
-
-        Args:
-            image (Union[bytes, str, BinaryIO]): The image data, provided as either:
-                - bytes: The raw image data as a byte string.
-                - str: The file path to the image.
-                - BinaryIO: An open file-like object containing the image data.
-            page_number (int): The page number to draw the image on.
-            x (Union[float, int]): The x coordinate of the image.
-            y (Union[float, int]): The y coordinate of the image.
-            width (Union[float, int]): The width of the image.
-            height (Union[float, int]): The height of the image.
-            rotation (Union[float, int]): The rotation of the image in degrees (default: 0).
-
-        Returns:
-            PdfWrapper: The `PdfWrapper` object, allowing for method chaining.
-        """
-
-        image = fp_or_f_obj_or_stream_to_stream(image)
-        image = rotate_image(image, rotation)
-        watermarks = create_watermarks_and_draw(
-            self.read(),
-            page_number,
-            "image",
-            [{"stream": image, "x": x, "y": y, "width": width, "height": height}],
+            self.read(), [each.to_draw for each in elements]
         )
 
         stream_with_widgets = self.read()
@@ -841,7 +783,7 @@ class PdfWrapper:
                 - str: The file path to the TTF file.
                 - BinaryIO: An open file-like object containing the TTF file data.
             first_time (bool): Whether this is the first time the font is being registered (default: True).
-                If True and `adobe_mode` is enabled, a blank text string is drawn to ensure the font is properly embedded in the PDF.
+                If True and `need_appearances` is enabled, a blank text string is drawn to ensure the font is properly embedded in the PDF.
 
         Returns:
             PdfWrapper: The `PdfWrapper` object, allowing for method chaining.
@@ -850,10 +792,10 @@ class PdfWrapper:
         ttf_file = fp_or_f_obj_or_stream_to_stream(ttf_file)
 
         if register_font(font_name, ttf_file) if ttf_file is not None else False:
-            if first_time and getattr(self, "adobe_mode"):
-                self.draw_text(" ", 1, 0, 0, font=font_name)
+            if first_time and getattr(self, "need_appearances"):
+                self.draw([RawText(" ", 1, 0, 0, font=font_name)])
             self._stream, new_font_name = register_font_acroform(
-                self.read(), ttf_file, getattr(self, "adobe_mode")
+                self.read(), ttf_file, getattr(self, "need_appearances")
             )
             self._available_fonts[font_name] = new_font_name
             self._font_register_events.append((font_name, ttf_file))

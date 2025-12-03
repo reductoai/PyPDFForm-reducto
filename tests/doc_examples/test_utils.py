@@ -2,7 +2,65 @@
 
 import os
 
-from PyPDFForm import PdfWrapper
+import pytest
+
+from PyPDFForm import BlankPage, PdfWrapper
+
+
+@pytest.mark.posix_only
+def test_blank_page(pdf_samples, request):
+    expected_path = os.path.join(pdf_samples, "docs", "test_blank_page.pdf")
+
+    blank_pdf = PdfWrapper(BlankPage())
+
+    request.config.results["expected_path"] = expected_path
+    request.config.results["stream"] = blank_pdf.read()
+
+    with open(expected_path, "rb+") as f:
+        expected = f.read()
+
+        assert len(blank_pdf.read()) == len(expected)
+        request.config.results["skip_regenerate"] = len(blank_pdf.read()) == len(
+            expected
+        )
+
+
+@pytest.mark.posix_only
+def test_blank_page_custom_dimensions(pdf_samples, request):
+    expected_path = os.path.join(
+        pdf_samples, "docs", "test_blank_page_custom_dimensions.pdf"
+    )
+
+    blank_pdf = PdfWrapper(BlankPage(width=595.35, height=841.995))  # A4 size
+
+    request.config.results["expected_path"] = expected_path
+    request.config.results["stream"] = blank_pdf.read()
+
+    with open(expected_path, "rb+") as f:
+        expected = f.read()
+
+        assert len(blank_pdf.read()) == len(expected)
+        request.config.results["skip_regenerate"] = len(blank_pdf.read()) == len(
+            expected
+        )
+
+
+@pytest.mark.posix_only
+def test_blank_page_multiply(pdf_samples, request):
+    expected_path = os.path.join(pdf_samples, "docs", "test_blank_page_multiply.pdf")
+
+    blank_pdf = PdfWrapper(BlankPage() * 3)  # 3 pages of letter size
+
+    request.config.results["expected_path"] = expected_path
+    request.config.results["stream"] = blank_pdf.read()
+
+    with open(expected_path, "rb+") as f:
+        expected = f.read()
+
+        assert len(blank_pdf.read()) == len(expected)
+        request.config.results["skip_regenerate"] = len(blank_pdf.read()) == len(
+            expected
+        )
 
 
 def test_extract_pages(static_pdfs, pdf_samples, request):
@@ -48,7 +106,7 @@ def test_reorg_pages(static_pdfs, pdf_samples, request):
 
     pdf_one = PdfWrapper(os.path.join(pdf_samples, "dummy.pdf"))
     pdf_two = PdfWrapper(os.path.join(static_pdfs, "sample_template.pdf"))
-    merged = pdf_two.pages[0] + pdf_one + pdf_two.pages[1] + pdf_two.pages[2]
+    merged = pdf_two.pages[0] + pdf_one + pdf_two.pages[1:]
 
     request.config.results["expected_path"] = expected_path
     request.config.results["stream"] = merged.read()
