@@ -10,6 +10,7 @@ supports flattening the filled form to prevent further modifications.
 
 from io import BytesIO
 from typing import Dict, Union, cast
+from warnings import warn
 
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DictionaryObject
@@ -115,6 +116,12 @@ def fill(
         for annot in page.get(Annots, []):
             annot_obj = annot.get_object()
             if annot_obj is None:
+                warn(
+                    f"Skipping annotation on page {page_num + 1}: "
+                    "annotation object is None (possibly corrupted PDF).",
+                    UserWarning,
+                    stacklevel=2,
+                )
                 continue
             annot = cast(DictionaryObject, annot_obj)
             key = get_widget_key(annot_obj, use_full_widget_name)

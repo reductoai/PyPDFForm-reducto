@@ -12,6 +12,7 @@ filling process, allowing for customization of the form's appearance and behavio
 import sys
 from io import BytesIO
 from typing import cast
+from warnings import warn
 
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import (ArrayObject, DictionaryObject, FloatObject,
@@ -53,10 +54,16 @@ def trigger_widget_hooks(
     output = PdfWriter()
     output.append(pdf_file)
 
-    for page in output.pages:
+    for page_num, page in enumerate(output.pages):
         for annot in page.get(Annots, []):
             annot_obj = annot.get_object()
             if annot_obj is None:
+                warn(
+                    f"Skipping annotation on page {page_num + 1}: "
+                    "annotation object is None (possibly corrupted PDF).",
+                    UserWarning,
+                    stacklevel=2,
+                )
                 continue
             annot = cast(DictionaryObject, annot_obj)
             key = get_widget_key(annot_obj, use_full_widget_name)

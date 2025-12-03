@@ -297,10 +297,16 @@ def update_widget_keys(
         index = indices[i]
         new_key = new_keys[i]
         tracker = -1
-        for page in out.pages:
+        for page_num, page in enumerate(out.pages):
             for annot in page.get(Annots, []):
                 annot_obj = annot.get_object()
                 if annot_obj is None:
+                    warn(
+                        f"Skipping annotation on page {page_num + 1}: "
+                        "annotation object is None (possibly corrupted PDF).",
+                        UserWarning,
+                        stacklevel=2,
+                    )
                     continue
                 annot = cast(DictionaryObject, annot_obj)
                 key = get_widget_key(annot_obj, False)
