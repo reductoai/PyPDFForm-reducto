@@ -22,6 +22,7 @@ from collections import defaultdict
 from dataclasses import asdict
 from functools import cached_property
 from typing import TYPE_CHECKING, BinaryIO, Dict, List, Tuple, Union
+from warnings import warn
 
 from .adapter import fp_or_f_obj_or_stream_to_stream
 from .ap import appearance_streams_handler
