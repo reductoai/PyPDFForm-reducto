@@ -17,6 +17,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from io import BytesIO
 from typing import List, Optional, Type
+from warnings import warn
 
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import (ArrayObject, FloatObject, NameObject,
@@ -111,15 +112,24 @@ class SignatureWidget:
         out = PdfWriter()
         out.append(pdf)
 
-        for page in out.pages:
+        for page_num, page in enumerate(out.pages):
             for annot in page.get(Annots, []):
-                key = get_widget_key(annot.get_object(), False)
+                annot_obj = annot.get_object()
+                if annot_obj is None:
+                    warn(
+                        f"Skipping annotation on page {page_num + 1}: "
+                        "annotation object is None (possibly corrupted PDF).",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                    continue
+                key = get_widget_key(annot_obj, False)
 
                 if key != self.BEDROCK_WIDGET_TO_COPY:
                     continue
 
-                annot.get_object()[NameObject(T)] = TextStringObject(self.name)
-                annot.get_object()[NameObject(Rect)] = ArrayObject(
+                annot_obj[NameObject(T)] = TextStringObject(self.name)
+                annot_obj[NameObject(Rect)] = ArrayObject(
                     [
                         FloatObject(self.x),
                         FloatObject(self.y),
@@ -167,8 +177,17 @@ class SignatureWidget:
         page = bedrock.pages[0]
         annot_type_to_annot = {}
         for annot in page.get(Annots, []):  # pylint: disable=E1101
-            key = get_widget_key(annot.get_object(), False)
-            annot_type_to_annot[key] = annot.get_object()
+            annot_obj = annot.get_object()
+            if annot_obj is None:
+                warn(
+                    "Skipping annotation on page 1: "
+                    "annotation object is None (possibly corrupted PDF).",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                continue
+            key = get_widget_key(annot_obj, False)
+            annot_type_to_annot[key] = annot_obj
 
         watermark = BytesIO()
 

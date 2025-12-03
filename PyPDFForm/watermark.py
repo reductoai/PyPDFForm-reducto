@@ -11,6 +11,7 @@ and to copy specific widgets from the watermarks to the original PDF.
 from collections import defaultdict
 from io import BytesIO
 from typing import List, Union
+from warnings import warn
 
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import ArrayObject, NameObject
@@ -255,7 +256,16 @@ def copy_watermark_widgets(
         for j, page in enumerate(watermark_file.pages):
             widgets_to_copy_pdf[j] = []
             for annot in page.get(Annots, []):
-                key = get_widget_key(annot.get_object(), False)
+                annot_obj = annot.get_object()
+                if annot_obj is None:
+                    warn(
+                        f"Skipping annotation on page {j + 1}: "
+                        "annotation object is None (possibly corrupted PDF).",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                    continue
+                key = get_widget_key(annot_obj, False)
 
                 # cannot be watermarks when page_num not None
                 if (keys is None or key in keys) and (
