@@ -299,8 +299,11 @@ def update_widget_keys(
         tracker = -1
         for page in out.pages:
             for annot in page.get(Annots, []):
-                annot = cast(DictionaryObject, annot.get_object())
-                key = get_widget_key(annot.get_object(), False)
+                annot_obj = annot.get_object()
+                if annot_obj is None:
+                    continue
+                annot = cast(DictionaryObject, annot_obj)
+                key = get_widget_key(annot_obj, False)
 
                 widget = widgets.get(key)
                 if widget is None:

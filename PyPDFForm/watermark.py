@@ -255,7 +255,10 @@ def copy_watermark_widgets(
         for j, page in enumerate(watermark_file.pages):
             widgets_to_copy_pdf[j] = []
             for annot in page.get(Annots, []):
-                key = get_widget_key(annot.get_object(), False)
+                annot_obj = annot.get_object()
+                if annot_obj is None:
+                    continue
+                key = get_widget_key(annot_obj, False)
 
                 # cannot be watermarks when page_num not None
                 if (keys is None or key in keys) and (

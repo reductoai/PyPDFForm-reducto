@@ -113,13 +113,16 @@ class SignatureWidget:
 
         for page in out.pages:
             for annot in page.get(Annots, []):
-                key = get_widget_key(annot.get_object(), False)
+                annot_obj = annot.get_object()
+                if annot_obj is None:
+                    continue
+                key = get_widget_key(annot_obj, False)
 
                 if key != self.BEDROCK_WIDGET_TO_COPY:
                     continue
 
-                annot.get_object()[NameObject(T)] = TextStringObject(self.name)
-                annot.get_object()[NameObject(Rect)] = ArrayObject(
+                annot_obj[NameObject(T)] = TextStringObject(self.name)
+                annot_obj[NameObject(Rect)] = ArrayObject(
                     [
                         FloatObject(self.x),
                         FloatObject(self.y),
@@ -167,8 +170,11 @@ class SignatureWidget:
         page = bedrock.pages[0]
         annot_type_to_annot = {}
         for annot in page.get(Annots, []):  # pylint: disable=E1101
-            key = get_widget_key(annot.get_object(), False)
-            annot_type_to_annot[key] = annot.get_object()
+            annot_obj = annot.get_object()
+            if annot_obj is None:
+                continue
+            key = get_widget_key(annot_obj, False)
+            annot_type_to_annot[key] = annot_obj
 
         watermark = BytesIO()
 

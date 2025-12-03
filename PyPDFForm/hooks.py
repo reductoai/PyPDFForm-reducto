@@ -55,8 +55,11 @@ def trigger_widget_hooks(
 
     for page in output.pages:
         for annot in page.get(Annots, []):
-            annot = cast(DictionaryObject, annot.get_object())
-            key = get_widget_key(annot.get_object(), use_full_widget_name)
+            annot_obj = annot.get_object()
+            if annot_obj is None:
+                continue
+            annot = cast(DictionaryObject, annot_obj)
+            key = get_widget_key(annot_obj, use_full_widget_name)
 
             widget = widgets.get(key)
             if widget is None or not widget.hooks_to_trigger:
