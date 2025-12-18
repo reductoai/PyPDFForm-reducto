@@ -235,6 +235,7 @@ class Widget:
                 continue
 
             watermark.seek(0)
+            watermark.truncate(0)
             watermark.flush()
 
             canvas = Canvas(
