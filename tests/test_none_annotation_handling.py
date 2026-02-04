@@ -17,6 +17,7 @@ from pypdf.generic import (
     ArrayObject,
     DictionaryObject,
     NameObject,
+    NullObject,
     NumberObject,
     TextStringObject,
 )
@@ -186,3 +187,87 @@ class TestNoneAnnotationFix:
                 # Should have emitted a warning
                 warning_messages = [str(warning.message) for warning in w]
                 assert any("annotation object is None" in msg for msg in warning_messages)
+
+
+class TestNullObjectAnnotationFix:
+    """
+    Tests for handling NullObject annotations in PDF processing.
+
+    Some malformed PDFs contain NullObject entries in their /Annots arrays,
+    which causes pypdf to fail with:
+        TypeError: 'NullObject' object is not subscriptable
+
+    The fix in ap.py filters out these NullObject entries before appending.
+    """
+
+    def test_remove_null_annotations_filters_null_objects(self):
+        """Test that _remove_null_annotations filters out NullObject entries."""
+        from pypdf import PdfReader
+        from PyPDFForm.ap import _remove_null_annotations
+
+        # Create a PDF with a valid widget
+        writer = PdfWriter()
+        writer.add_blank_page(612, 792)
+
+        widget = DictionaryObject()
+        widget[NameObject("/Type")] = NameObject("/Annot")
+        widget[NameObject("/Subtype")] = NameObject("/Widget")
+        widget[NameObject("/FT")] = NameObject("/Tx")
+        widget[NameObject("/T")] = TextStringObject("test_field")
+        widget[NameObject("/Rect")] = ArrayObject([
+            NumberObject(100), NumberObject(100),
+            NumberObject(200), NumberObject(120)
+        ])
+
+        # Add annotations array with a valid widget and a NullObject
+        annots = ArrayObject()
+        annots.append(writer._add_object(widget))
+        annots.append(NullObject())  # This would cause pypdf to fail
+        writer.pages[0][NameObject("/Annots")] = annots
+
+        pdf_bytes = BytesIO()
+        writer.write(pdf_bytes)
+        pdf_bytes.seek(0)
+
+        # Now read it back and apply the fix
+        reader = PdfReader(pdf_bytes)
+
+        # Before fix: should have 2 annotations (1 valid + 1 null)
+        original_annots = reader.pages[0]["/Annots"]
+        assert len(original_annots) == 2
+
+        # Apply the fix
+        _remove_null_annotations(reader)
+
+        # After fix: should have only 1 annotation (null filtered out)
+        filtered_annots = reader.pages[0]["/Annots"]
+        assert len(filtered_annots) == 1
+
+    def test_pdf_with_null_annotation_can_be_processed(self):
+        """Test that a PDF with NullObject annotations can be processed by PdfWrapper."""
+        # Create a PDF with a NullObject in annotations
+        writer = PdfWriter()
+        writer.add_blank_page(612, 792)
+
+        widget = DictionaryObject()
+        widget[NameObject("/Type")] = NameObject("/Annot")
+        widget[NameObject("/Subtype")] = NameObject("/Widget")
+        widget[NameObject("/FT")] = NameObject("/Tx")
+        widget[NameObject("/T")] = TextStringObject("test_field")
+        widget[NameObject("/Rect")] = ArrayObject([
+            NumberObject(100), NumberObject(100),
+            NumberObject(200), NumberObject(120)
+        ])
+
+        annots = ArrayObject()
+        annots.append(writer._add_object(widget))
+        annots.append(NullObject())  # Would cause TypeError without the fix
+        writer.pages[0][NameObject("/Annots")] = annots
+
+        pdf_bytes = BytesIO()
+        writer.write(pdf_bytes)
+        pdf_bytes.seek(0)
+
+        # This should not raise TypeError: 'NullObject' object is not subscriptable
+        wrapper = PdfWrapper(pdf_bytes.read())
+        assert "test_field" in wrapper.widgets

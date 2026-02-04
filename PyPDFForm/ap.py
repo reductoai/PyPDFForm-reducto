@@ -12,9 +12,36 @@ from io import BytesIO
 
 from pikepdf import Pdf
 from pypdf import PdfReader, PdfWriter
+from pypdf.generic import ArrayObject, NameObject, NullObject
 
 from .constants import XFA, AcroForm, Root
 from .utils import stream_to_io
+
+
+def _remove_null_annotations(reader: PdfReader) -> None:
+    """
+    Remove null objects from annotation arrays in all pages.
+
+    Some malformed PDFs contain NullObject entries in their /Annots arrays,
+    which causes pypdf to fail when merging. This function filters them out.
+
+    Args:
+        reader: The PdfReader to clean up (modified in place).
+    """
+    for page in reader.pages:
+        if "/Annots" in page:
+            annots = page["/Annots"]
+            if annots is not None:
+                # Get the actual array object, resolving indirect references
+                annots_array = annots.get_object() if hasattr(annots, "get_object") else annots
+                if isinstance(annots_array, ArrayObject):
+                    # Filter out NullObject entries
+                    filtered = [
+                        annot for annot in annots_array
+                        if not isinstance(annot.get_object() if hasattr(annot, "get_object") else annot, NullObject)
+                    ]
+                    if len(filtered) != len(annots_array):
+                        page[NameObject("/Annots")] = ArrayObject(filtered)
 
 
 @lru_cache
@@ -45,6 +72,7 @@ def appearance_streams_handler(pdf: bytes, generate_appearance_streams: bool) ->
     if AcroForm in reader.trailer[Root] and XFA in reader.trailer[Root][AcroForm]:
         del reader.trailer[Root][AcroForm][XFA]
 
+    _remove_null_annotations(reader)
     writer.append(reader)
     writer.set_need_appearances_writer()
 

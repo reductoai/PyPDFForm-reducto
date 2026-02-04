@@ -13,7 +13,7 @@ from typing import Dict, List, Tuple, Union, cast
 from warnings import warn
 
 from pypdf import PdfReader, PdfWriter
-from pypdf.generic import DictionaryObject
+from pypdf.generic import DictionaryObject, NullObject
 
 from .constants import WIDGET_TYPES, Annots, MaxLen, Parent, T
 from .middleware.checkbox import Checkbox
@@ -136,7 +136,10 @@ def get_widgets_by_page(pdf: bytes) -> Dict[int, List[dict]]:
         result[i + 1] = []
         if widgets:
             for widget in widgets:
-                widget = dict(widget.get_object())
+                widget_obj = widget.get_object()
+                if widget_obj is None or isinstance(widget_obj, NullObject):
+                    continue
+                widget = dict(widget_obj)
                 for each in WIDGET_TYPE_PATTERNS:
                     patterns = each[0]
                     check = True
